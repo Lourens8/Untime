@@ -1,10 +1,13 @@
 package com.meetingalarm.alarm
 
-import android.app.NotificationManager
-import android.media.AudioAttributes
-import android.media.MediaPlayer
-import android.media.RingtoneManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.PowerManager
+import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.TextView
@@ -13,10 +16,21 @@ import com.meetingalarm.R
 
 class AlarmActivity : AppCompatActivity() {
 
-    private var mediaPlayer: MediaPlayer? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private var autoDismissRunnable: Runnable? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Acquire a wake lock to force the screen on even during always-on display
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = pm.newWakeLock(
+            PowerManager.FULL_WAKE_LOCK or
+                    PowerManager.ACQUIRE_CAUSES_WAKEUP or
+                    PowerManager.ON_AFTER_RELEASE,
+            "meetingalarm:alarm_wakelock"
+        ).apply { acquire(5 * 60 * 1000L) } // 5 minute timeout as safety net
 
         setShowWhenLocked(true)
         setTurnScreenOn(true)
@@ -26,54 +40,87 @@ class AlarmActivity : AppCompatActivity() {
 
         val title = intent.getStringExtra(EXTRA_MEETING_TITLE) ?: "Meeting"
         val eventId = intent.getLongExtra(EXTRA_EVENT_ID, 0)
+        val location = intent.getStringExtra(EXTRA_LOCATION)
+        val autoDismissSeconds = intent.getIntExtra(EXTRA_AUTO_DISMISS_SECONDS, 60)
+        val snoozeDurationSeconds = intent.getIntExtra(EXTRA_SNOOZE_DURATION_SECONDS, 60)
+        val snoozeEnabled = intent.getBooleanExtra(EXTRA_SNOOZE_ENABLED, true)
+        val alarmSoundUri = intent.getStringExtra(EXTRA_ALARM_SOUND_URI)
 
         findViewById<TextView>(R.id.tvMeetingTitle).text = title
 
+        val tvLocation = findViewById<TextView>(R.id.tvLocation)
+        if (!location.isNullOrBlank()) {
+            tvLocation.text = location
+            tvLocation.visibility = View.VISIBLE
+        } else {
+            tvLocation.visibility = View.GONE
+        }
+
+        // Join button
+        val meetingUrl = MeetingUrlParser.extractMeetingUrl(location)
+        val btnJoin = findViewById<Button>(R.id.btnJoin)
+        if (meetingUrl != null) {
+            btnJoin.visibility = View.VISIBLE
+            btnJoin.setOnClickListener {
+                cancelAutoDismiss()
+                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(meetingUrl))
+                startActivity(browserIntent)
+                dismissAlarm()
+            }
+        }
+
+        // Snooze button
+        val btnSnooze = findViewById<Button>(R.id.btnSnooze)
+        if (snoozeEnabled) {
+            btnSnooze.visibility = View.VISIBLE
+            btnSnooze.setOnClickListener {
+                cancelAutoDismiss()
+                AlarmScheduler(this).scheduleSnooze(
+                    title = title,
+                    eventId = eventId,
+                    location = location,
+                    delayMillis = snoozeDurationSeconds * 1000L,
+                    autoDismissSeconds = autoDismissSeconds,
+                    snoozeDurationSeconds = snoozeDurationSeconds,
+                    snoozeEnabled = snoozeEnabled,
+                    alarmSoundUri = alarmSoundUri
+                )
+                // Snooze does NOT enable DND
+                AlarmService.stop(this)
+                finish()
+            }
+        }
+
+        // Dismiss button
         findViewById<Button>(R.id.btnDismiss).setOnClickListener {
-            dismissAlarm(eventId)
+            cancelAutoDismiss()
+            dismissAlarm()
         }
 
-        startAlarmSound()
-    }
-
-    private fun startAlarmSound() {
-        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-
-        mediaPlayer = MediaPlayer().apply {
-            setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            )
-            setDataSource(this@AlarmActivity, alarmUri)
-            isLooping = true
-            prepare()
-            start()
+        // Auto-dismiss timer
+        if (autoDismissSeconds > 0) {
+            autoDismissRunnable = Runnable { dismissAlarm() }
+            handler.postDelayed(autoDismissRunnable!!, autoDismissSeconds * 1000L)
         }
     }
 
-    private fun dismissAlarm(eventId: Long) {
-        mediaPlayer?.let {
-            if (it.isPlaying) it.stop()
-            it.release()
-        }
-        mediaPlayer = null
-
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        nm.cancel(eventId.toInt())
-
+    private fun dismissAlarm() {
+        cancelAutoDismiss()
+        DndManager(this).enableDnd()
+        AlarmService.stop(this)
         finish()
     }
 
+    private fun cancelAutoDismiss() {
+        autoDismissRunnable?.let { handler.removeCallbacks(it) }
+        autoDismissRunnable = null
+    }
+
     override fun onDestroy() {
+        cancelAutoDismiss()
+        wakeLock?.let { if (it.isHeld) it.release() }
+        wakeLock = null
         super.onDestroy()
-        mediaPlayer?.let {
-            if (it.isPlaying) it.stop()
-            it.release()
-        }
-        mediaPlayer = null
     }
 
     @Deprecated("Use onBackPressedDispatcher")
@@ -84,5 +131,10 @@ class AlarmActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_MEETING_TITLE = "meeting_title"
         const val EXTRA_EVENT_ID = "event_id"
+        const val EXTRA_LOCATION = "location"
+        const val EXTRA_AUTO_DISMISS_SECONDS = "auto_dismiss_seconds"
+        const val EXTRA_SNOOZE_DURATION_SECONDS = "snooze_duration_seconds"
+        const val EXTRA_SNOOZE_ENABLED = "snooze_enabled"
+        const val EXTRA_ALARM_SOUND_URI = "alarm_sound_uri"
     }
 }

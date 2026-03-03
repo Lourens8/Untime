@@ -1,5 +1,6 @@
 package com.meetingalarm.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,9 +11,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -32,12 +37,20 @@ import java.util.Locale
 @Composable
 fun MeetingListScreen(
     meetings: List<Meeting>,
-    onToggleExclusion: (Meeting) -> Unit
+    onToggleExclusion: (Meeting) -> Unit,
+    onSettingsClick: () -> Unit = {},
+    onMeetingClick: (Meeting) -> Unit = {},
+    hasOverride: (Meeting) -> Boolean = { false }
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Meeting Alarm") },
+                actions = {
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -71,7 +84,9 @@ fun MeetingListScreen(
                 items(meetings, key = { it.eventId }) { meeting ->
                     MeetingItem(
                         meeting = meeting,
-                        onToggle = { onToggleExclusion(meeting) }
+                        onToggle = { onToggleExclusion(meeting) },
+                        onClick = { onMeetingClick(meeting) },
+                        hasOverride = hasOverride(meeting)
                     )
                 }
                 item { Spacer(modifier = Modifier.height(8.dp)) }
@@ -83,7 +98,9 @@ fun MeetingListScreen(
 @Composable
 private fun MeetingItem(
     meeting: Meeting,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    onClick: () -> Unit,
+    hasOverride: Boolean
 ) {
     val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
     val timeText = timeFormat.format(Date(meeting.startTimeMillis))
@@ -102,19 +119,32 @@ private fun MeetingItem(
                 checked = !meeting.isExcluded,
                 onCheckedChange = { onToggle() }
             )
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onClick() }
+            ) {
                 Text(
                     text = meeting.title,
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    text = if (isPast) "$timeText (passed)" else timeText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isPast) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.primary
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = if (isPast) "$timeText (passed)" else timeText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isPast) MaterialTheme.colorScheme.onSurfaceVariant
+                        else MaterialTheme.colorScheme.primary
+                    )
+                    if (hasOverride) {
+                        Text(
+                            text = " \u2022 Custom",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                }
             }
             if (meeting.isExcluded) {
                 Text(

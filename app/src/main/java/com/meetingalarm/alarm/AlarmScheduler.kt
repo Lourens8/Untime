@@ -6,18 +6,27 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import com.meetingalarm.model.Meeting
+import com.meetingalarm.settings.EffectiveSettings
+import com.meetingalarm.settings.MeetingOverrideStore
+import com.meetingalarm.settings.SettingsStore
 
 class AlarmScheduler(private val context: Context) {
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-    fun schedule(meeting: Meeting) {
+    fun schedule(meeting: Meeting, settings: EffectiveSettings) {
+        val triggerTime = meeting.startTimeMillis - settings.minutesBefore * 60_000L
         // Schedule start alarm
-        if (meeting.startTimeMillis > System.currentTimeMillis()) {
+        if (triggerTime > System.currentTimeMillis()) {
             val intent = Intent(context, AlarmReceiver::class.java).apply {
                 putExtra(AlarmReceiver.EXTRA_MEETING_TITLE, meeting.title)
                 putExtra(AlarmReceiver.EXTRA_EVENT_ID, meeting.eventId)
                 putExtra(AlarmReceiver.EXTRA_END_TIME, meeting.endTimeMillis)
+                putExtra(AlarmReceiver.EXTRA_LOCATION, meeting.location)
+                putExtra(AlarmReceiver.EXTRA_AUTO_DISMISS_SECONDS, settings.autoDismissSeconds)
+                putExtra(AlarmReceiver.EXTRA_SNOOZE_DURATION_SECONDS, settings.snoozeDurationSeconds)
+                putExtra(AlarmReceiver.EXTRA_SNOOZE_ENABLED, settings.snoozeEnabled)
+                putExtra(AlarmReceiver.EXTRA_ALARM_SOUND_URI, settings.alarmSoundUri)
             }
 
             val pendingIntent = PendingIntent.getBroadcast(
@@ -29,7 +38,7 @@ class AlarmScheduler(private val context: Context) {
 
             alarmManager.setExactAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
-                meeting.startTimeMillis,
+                triggerTime,
                 pendingIntent
             )
         }
@@ -79,16 +88,64 @@ class AlarmScheduler(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(dndPendingIntent)
+
+        // If the alarm already fired (meeting is in progress), DND was enabled for it.
+        // Restore DND now since the DND restore alarm was just cancelled.
+        val now = System.currentTimeMillis()
+        if (now >= meeting.startTimeMillis && now < meeting.endTimeMillis) {
+            DndManager(context).restoreDnd()
+        }
     }
 
-    fun scheduleAll(meetings: List<Meeting>) {
+    fun scheduleAll(
+        meetings: List<Meeting>,
+        settingsStore: SettingsStore,
+        overrideStore: MeetingOverrideStore
+    ) {
         for (meeting in meetings) {
             if (meeting.isExcluded) {
                 cancel(meeting)
             } else {
-                schedule(meeting)
+                val settings = EffectiveSettings.resolve(meeting.title, settingsStore, overrideStore)
+                schedule(meeting, settings)
             }
         }
+    }
+
+    fun scheduleSnooze(
+        title: String,
+        eventId: Long,
+        location: String?,
+        delayMillis: Long,
+        autoDismissSeconds: Int,
+        snoozeDurationSeconds: Int,
+        snoozeEnabled: Boolean,
+        alarmSoundUri: String?
+    ) {
+        val triggerTime = System.currentTimeMillis() + delayMillis
+
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            putExtra(AlarmReceiver.EXTRA_MEETING_TITLE, title)
+            putExtra(AlarmReceiver.EXTRA_EVENT_ID, eventId)
+            putExtra(AlarmReceiver.EXTRA_LOCATION, location)
+            putExtra(AlarmReceiver.EXTRA_AUTO_DISMISS_SECONDS, autoDismissSeconds)
+            putExtra(AlarmReceiver.EXTRA_SNOOZE_DURATION_SECONDS, snoozeDurationSeconds)
+            putExtra(AlarmReceiver.EXTRA_SNOOZE_ENABLED, snoozeEnabled)
+            putExtra(AlarmReceiver.EXTRA_ALARM_SOUND_URI, alarmSoundUri)
+        }
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            eventId.toInt() + SNOOZE_REQUEST_CODE_OFFSET,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            triggerTime,
+            pendingIntent
+        )
     }
 
     /** Offset request code for DND restore to avoid collision with start alarm. */
@@ -96,6 +153,7 @@ class AlarmScheduler(private val context: Context) {
 
     companion object {
         private const val DND_REQUEST_CODE_OFFSET = 100_000
+        private const val SNOOZE_REQUEST_CODE_OFFSET = 200_000
 
         fun canScheduleExactAlarms(context: Context): Boolean {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true

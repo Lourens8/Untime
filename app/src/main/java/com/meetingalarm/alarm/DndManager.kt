@@ -33,7 +33,7 @@ class DndManager(private val context: Context) {
         prefs.edit().putInt(KEY_ACTIVE_COUNT, activeCount + 1).apply()
 
         notificationManager.setInterruptionFilter(
-            NotificationManager.INTERRUPTION_FILTER_NONE
+            NotificationManager.INTERRUPTION_FILTER_ALARMS
         )
     }
 

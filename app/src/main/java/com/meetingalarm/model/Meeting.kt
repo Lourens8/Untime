@@ -5,5 +5,6 @@ data class Meeting(
     val title: String,
     val startTimeMillis: Long,
     val endTimeMillis: Long,
-    val isExcluded: Boolean
+    val isExcluded: Boolean,
+    val location: String? = null
 )

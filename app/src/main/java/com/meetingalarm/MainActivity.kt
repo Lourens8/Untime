@@ -245,6 +245,14 @@ class MainActivity : ComponentActivity() {
         if (!nm.isNotificationPolicyAccessGranted) {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
         }
+
+        // Prompt for overlay permission (display over other apps) so the alarm screen appears reliably
+        if (!Settings.canDrawOverlays(this)) {
+            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            startActivity(intent)
+        }
     }
 
     private fun requestCalendarPermission() {

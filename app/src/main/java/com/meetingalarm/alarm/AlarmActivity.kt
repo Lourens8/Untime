@@ -1,5 +1,6 @@
 package com.meetingalarm.alarm
 
+import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -34,7 +35,18 @@ class AlarmActivity : AppCompatActivity() {
 
         setShowWhenLocked(true)
         setTurnScreenOn(true)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        @Suppress("DEPRECATION")
+        window.addFlags(
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+        )
+
+        // Dismiss the keyguard so the activity is fully visible
+        val km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        km.requestDismissKeyguard(this, null)
 
         setContentView(R.layout.activity_alarm)
 

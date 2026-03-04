@@ -93,7 +93,7 @@ class AlarmScheduler(private val context: Context) {
         // Restore DND now since the DND restore alarm was just cancelled.
         val now = System.currentTimeMillis()
         if (now >= meeting.startTimeMillis && now < meeting.endTimeMillis) {
-            DndManager(context).restoreDnd()
+            DndManager(context).restoreDnd(meeting.eventId)
         }
     }
 
@@ -110,6 +110,34 @@ class AlarmScheduler(private val context: Context) {
                 schedule(meeting, settings)
             }
         }
+
+        // Clean up DND/notifications for meetings deleted from the calendar
+        val currentEventIds = meetings.map { it.eventId }.toSet()
+        val dndManager = DndManager(context)
+        for (activeId in dndManager.getActiveEventIds()) {
+            if (activeId !in currentEventIds) {
+                cleanupDeletedMeeting(activeId)
+            }
+        }
+    }
+
+    /** Cancel DND restore alarm, restore DND state, and dismiss notification for a deleted meeting. */
+    fun cleanupDeletedMeeting(eventId: Long) {
+        // Cancel the scheduled DND restore alarm
+        val dndIntent = Intent(context, DndRestoreReceiver::class.java)
+        val dndPendingIntent = PendingIntent.getBroadcast(
+            context,
+            dndRequestCode(eventId),
+            dndIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(dndPendingIntent)
+
+        // Restore DND and remove from active set
+        DndManager(context).restoreDnd(eventId)
+
+        // Dismiss the ongoing notification
+        OngoingNotificationManager.cancelMeetingNotification(context, eventId)
     }
 
     fun scheduleSnooze(

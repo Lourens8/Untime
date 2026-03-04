@@ -4,12 +4,50 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.media.AudioAttributes
+import android.provider.CalendarContract
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.meetingalarm.alarm.CalendarContentObserver
+import com.meetingalarm.alarm.CalendarSyncWorker
+import java.util.concurrent.TimeUnit
 
 class MeetingAlarmApp : Application() {
+
+    private var calendarObserver: CalendarContentObserver? = null
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        registerCalendarObserver()
+        enqueueCalendarSyncWorker()
+    }
+
+    override fun onTerminate() {
+        super.onTerminate()
+        calendarObserver?.let { contentResolver.unregisterContentObserver(it) }
+    }
+
+    private fun registerCalendarObserver() {
+        val observer = CalendarContentObserver(this)
+        contentResolver.registerContentObserver(
+            CalendarContract.Events.CONTENT_URI,
+            true,
+            observer
+        )
+        calendarObserver = observer
+    }
+
+    private fun enqueueCalendarSyncWorker() {
+        val request = PeriodicWorkRequestBuilder<CalendarSyncWorker>(
+            15, TimeUnit.MINUTES
+        ).build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            CalendarSyncWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
     }
 
     private fun createNotificationChannel() {

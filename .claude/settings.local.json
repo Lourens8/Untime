@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(JAVA_HOME=\"/c/Program Files/Android/Android Studio/jbr\" ./gradlew assembleDebug:*)",
+      "Bash(\"$ADB\":*)",
+      "Bash(./gradlew assembleDebug:*)",
+      "Bash(adb devices:*)",
+      "Bash(export:*)",
+      "Bash(powershell:*)"
+    ]
+  }
+}

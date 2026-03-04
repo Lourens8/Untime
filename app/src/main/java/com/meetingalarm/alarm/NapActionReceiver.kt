@@ -40,7 +40,7 @@ class NapActionReceiver : BroadcastReceiver() {
     }
 
     private fun endMeetingDnd(context: Context, eventId: Long) {
-        DndManager(context).restoreDnd()
+        DndManager(context).restoreDnd(eventId)
         OngoingNotificationManager.cancelMeetingNotification(context, eventId)
 
         // Cancel the scheduled DND restore alarm for this event

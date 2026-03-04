@@ -148,12 +148,12 @@ class AlarmActivity : AppCompatActivity() {
         } else {
             // Enable DND with countdown to meeting end
             if (meetingEndTime > System.currentTimeMillis()) {
-                DndManager(this).enableDndUntil(meetingEndTime)
+                DndManager(this).enableDndUntil(meetingEndTime, meetingEventId)
                 OngoingNotificationManager.showMeetingNotification(
                     this, meetingTitle, meetingEndTime, meetingEventId
                 )
             } else {
-                DndManager(this).enableDnd()
+                DndManager(this).enableDnd(meetingEventId)
             }
         }
         AlarmService.stop(this)

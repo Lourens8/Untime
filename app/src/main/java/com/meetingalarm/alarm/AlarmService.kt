@@ -83,17 +83,39 @@ class AlarmService : Service() {
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         }
 
-        mediaPlayer = MediaPlayer().apply {
-            setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            )
-            setDataSource(this@AlarmService, alarmUri)
-            isLooping = true
-            prepare()
-            start()
+        try {
+            mediaPlayer = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+                setDataSource(this@AlarmService, alarmUri)
+                isLooping = true
+                prepare()
+                start()
+            }
+        } catch (_: Exception) {
+            // Custom sound failed — fall back to default alarm
+            try {
+                val fallbackUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                    ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                mediaPlayer = MediaPlayer().apply {
+                    setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ALARM)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
+                    setDataSource(this@AlarmService, fallbackUri)
+                    isLooping = true
+                    prepare()
+                    start()
+                }
+            } catch (_: Exception) {
+                // No usable alarm sound available
+            }
         }
     }
 

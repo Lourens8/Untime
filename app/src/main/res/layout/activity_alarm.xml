@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FF1744"
+    android:background="#1A2332"
     android:gravity="center"
     android:orientation="vertical"
     android:padding="32dp">
@@ -18,7 +18,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:text="MEETING STARTING"
-        android:textColor="#FFFFFF"
+        android:textColor="#89CFF0"
         android:textSize="24sp"
         android:textStyle="bold" />
 
@@ -28,7 +28,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:gravity="center"
-        android:textColor="#FFFFFF"
+        android:textColor="#F0F0F0"
         android:textSize="28sp"
         android:textStyle="bold" />
 
@@ -38,7 +38,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:gravity="center"
-        android:textColor="#FFFFFFCC"
+        android:textColor="#8899AA"
         android:textSize="16sp"
         android:visibility="gone" />
 
@@ -66,9 +66,9 @@
             android:layout_width="150dp"
             android:layout_height="64dp"
             android:layout_marginEnd="16dp"
-            android:backgroundTint="#FFFFFF"
+            android:backgroundTint="#223344"
             android:text="SNOOZE"
-            android:textColor="#FF1744"
+            android:textColor="#89CFF0"
             android:textSize="18sp"
             android:textStyle="bold"
             android:visibility="gone" />
@@ -77,9 +77,9 @@
             android:id="@+id/btnDismiss"
             android:layout_width="150dp"
             android:layout_height="64dp"
-            android:backgroundTint="#FFFFFF"
+            android:backgroundTint="#89CFF0"
             android:text="DISMISS"
-            android:textColor="#FF1744"
+            android:textColor="#1A2332"
             android:textSize="20sp"
             android:textStyle="bold" />
 

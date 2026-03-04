@@ -18,7 +18,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -188,7 +188,7 @@ fun MeetingListScreen(
                             onClick = { onMeetingClick(meeting) },
                             hasOverride = hasOverride(meeting)
                         )
-                        Divider(
+                        HorizontalDivider(
                             color = GoldDivider,
                             thickness = 1.dp,
                             modifier = Modifier.padding(top = 8.dp)

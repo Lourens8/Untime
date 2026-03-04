@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -104,6 +105,10 @@ class MainActivity : ComponentActivity() {
                 val meetingForSettings = selectedMeetingForSettings.value
                 when {
                     meetingForSettings != null -> {
+                        BackHandler {
+                            selectedMeetingForSettings.value = null
+                            loadAndSync()
+                        }
                         val key = meetingForSettings.title.trim().lowercase()
                         MeetingSettingsScreen(
                             meetingTitle = meetingForSettings.title,
@@ -123,6 +128,10 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     showCalendarFilter.value -> {
+                        BackHandler {
+                            showCalendarFilter.value = false
+                            loadAndSync()
+                        }
                         val calendars = CalendarStore.getAvailableCalendars(this@MainActivity)
                         CalendarFilterScreen(
                             calendars = calendars,
@@ -137,6 +146,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     showNapAlarm.value -> {
+                        BackHandler { showNapAlarm.value = false }
                         NapAlarmScreen(
                             meetings = meetings,
                             initialDurationMinutes = settingsStore.getNapDurationMinutes(),
@@ -147,6 +157,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     showSettings.value -> {
+                        BackHandler { showSettings.value = false }
                         SettingsScreen(
                             currentMinutesBefore = settingsStore.getMinutesBefore(),
                             onMinutesBeforeChanged = { minutes ->

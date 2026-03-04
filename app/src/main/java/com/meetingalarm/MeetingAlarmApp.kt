@@ -20,7 +20,7 @@ class MeetingAlarmApp : Application() {
 
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Meeting Alarms",
+            "Untime Alarms",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = "Alarms for upcoming meetings"

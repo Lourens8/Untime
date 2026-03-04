@@ -16,13 +16,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,6 +35,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,7 +45,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.meetingalarm.model.Meeting
+import com.meetingalarm.ui.theme.GoldDivider
+import com.meetingalarm.ui.theme.TealAccent
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -60,24 +68,84 @@ fun MeetingListScreen(
     onExtendNap: (Int) -> Unit = {}
 ) {
     var showNapControlDialog by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableIntStateOf(0) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Meeting Alarm") },
+                title = { Text("Untime") },
                 actions = {
-                    IconButton(onClick = onNapClick) {
-                        Text("\uD83D\uDCA4", style = MaterialTheme.typography.titleLarge)
+                    IconButton(onClick = {
+                        selectedTab = 2
+                        onNapClick()
+                    }) {
+                        Text("z\u1DBB", style = MaterialTheme.typography.titleLarge)
                     }
-                    IconButton(onClick = onSettingsClick) {
+                    IconButton(onClick = {
+                        selectedTab = 3
+                        onSettingsClick()
+                    }) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
+        },
+        bottomBar = {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ) {
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = { Text("\u2302", style = MaterialTheme.typography.titleLarge) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = TealAccent,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        indicatorColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = { Text("\u2611", style = MaterialTheme.typography.titleLarge) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = TealAccent,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        indicatorColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 2,
+                    onClick = {
+                        selectedTab = 2
+                        onNapClick()
+                    },
+                    icon = { Text("z\u1DBB", style = MaterialTheme.typography.titleMedium) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = TealAccent,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        indicatorColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 3,
+                    onClick = {
+                        selectedTab = 3
+                        onSettingsClick()
+                    },
+                    icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = TealAccent,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        indicatorColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+            }
         }
     ) { padding ->
         Column(
@@ -110,8 +178,7 @@ fun MeetingListScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(horizontal = 16.dp)
                 ) {
                     item { Spacer(modifier = Modifier.height(8.dp)) }
                     items(meetings, key = { it.eventId }) { meeting ->
@@ -120,6 +187,11 @@ fun MeetingListScreen(
                             onToggle = { onToggleExclusion(meeting) },
                             onClick = { onMeetingClick(meeting) },
                             hasOverride = hasOverride(meeting)
+                        )
+                        Divider(
+                            color = GoldDivider,
+                            thickness = 1.dp,
+                            modifier = Modifier.padding(top = 8.dp)
                         )
                     }
                     item { Spacer(modifier = Modifier.height(8.dp)) }
@@ -175,54 +247,56 @@ private fun MeetingItem(
     val timeText = timeFormat.format(Date(meeting.startTimeMillis))
     val isPast = meeting.startTimeMillis <= System.currentTimeMillis()
 
-    Card(
-        modifier = Modifier.fillMaxWidth()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = !meeting.isExcluded,
-                onCheckedChange = { onToggle() }
+        Checkbox(
+            checked = !meeting.isExcluded,
+            onCheckedChange = { onToggle() },
+            colors = CheckboxDefaults.colors(
+                checkedColor = TealAccent,
+                uncheckedColor = MaterialTheme.colorScheme.outline,
+                checkmarkColor = MaterialTheme.colorScheme.surface
             )
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onClick() }
-            ) {
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onClick() }
+        ) {
+            Text(
+                text = meeting.title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = meeting.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    text = if (isPast) "$timeText (passed)" else timeText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isPast) MaterialTheme.colorScheme.onSurfaceVariant
+                    else TealAccent
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                if (hasOverride) {
                     Text(
-                        text = if (isPast) "$timeText (passed)" else timeText,
+                        text = " \u2022 Custom",
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (isPast) MaterialTheme.colorScheme.onSurfaceVariant
-                        else MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.tertiary
                     )
-                    if (hasOverride) {
-                        Text(
-                            text = " \u2022 Custom",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
                 }
             }
-            if (meeting.isExcluded) {
-                Text(
-                    text = "Skipped",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-            }
+        }
+        if (meeting.isExcluded) {
+            Text(
+                text = "Skipped",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(end = 8.dp)
+            )
         }
     }
 }

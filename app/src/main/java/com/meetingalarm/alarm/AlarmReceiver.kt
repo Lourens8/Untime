@@ -10,21 +10,25 @@ class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val title = intent.getStringExtra(EXTRA_MEETING_TITLE) ?: "Meeting"
         val eventId = intent.getLongExtra(EXTRA_EVENT_ID, 0)
+        val endTime = intent.getLongExtra(EXTRA_END_TIME, 0)
         val location = intent.getStringExtra(EXTRA_LOCATION)
         val autoDismissSeconds = intent.getIntExtra(EXTRA_AUTO_DISMISS_SECONDS, 60)
         val snoozeDurationSeconds = intent.getIntExtra(EXTRA_SNOOZE_DURATION_SECONDS, 60)
         val snoozeEnabled = intent.getBooleanExtra(EXTRA_SNOOZE_ENABLED, true)
         val alarmSoundUri = intent.getStringExtra(EXTRA_ALARM_SOUND_URI)
+        val isNapAlarm = intent.getBooleanExtra(AlarmScheduler.EXTRA_IS_NAP_ALARM, false)
 
         // Start foreground service to play sound and launch alarm UI
         val serviceIntent = Intent(context, AlarmService::class.java).apply {
             putExtra(AlarmService.EXTRA_MEETING_TITLE, title)
             putExtra(AlarmService.EXTRA_EVENT_ID, eventId)
+            putExtra(AlarmService.EXTRA_END_TIME, endTime)
             putExtra(AlarmService.EXTRA_LOCATION, location)
             putExtra(AlarmService.EXTRA_AUTO_DISMISS_SECONDS, autoDismissSeconds)
             putExtra(AlarmService.EXTRA_SNOOZE_DURATION_SECONDS, snoozeDurationSeconds)
             putExtra(AlarmService.EXTRA_SNOOZE_ENABLED, snoozeEnabled)
             putExtra(AlarmService.EXTRA_ALARM_SOUND_URI, alarmSoundUri)
+            putExtra(AlarmService.EXTRA_IS_NAP_ALARM, isNapAlarm)
         }
         ContextCompat.startForegroundService(context, serviceIntent)
     }

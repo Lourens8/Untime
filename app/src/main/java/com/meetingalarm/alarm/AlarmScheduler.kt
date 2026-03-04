@@ -148,12 +148,51 @@ class AlarmScheduler(private val context: Context) {
         )
     }
 
+    fun scheduleNapAlarm(durationMinutes: Int, alarmSoundUri: String?) {
+        val triggerTime = System.currentTimeMillis() + durationMinutes * 60_000L
+
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            putExtra(AlarmReceiver.EXTRA_MEETING_TITLE, "Nap Over!")
+            putExtra(AlarmReceiver.EXTRA_EVENT_ID, NAP_REQUEST_CODE.toLong())
+            putExtra(AlarmReceiver.EXTRA_AUTO_DISMISS_SECONDS, 60)
+            putExtra(AlarmReceiver.EXTRA_SNOOZE_ENABLED, false)
+            putExtra(AlarmReceiver.EXTRA_ALARM_SOUND_URI, alarmSoundUri)
+            putExtra(EXTRA_IS_NAP_ALARM, true)
+        }
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            NAP_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            triggerTime,
+            pendingIntent
+        )
+    }
+
+    fun cancelNapAlarm() {
+        val intent = Intent(context, AlarmReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            NAP_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pendingIntent)
+    }
+
     /** Offset request code for DND restore to avoid collision with start alarm. */
     private fun dndRequestCode(eventId: Long): Int = eventId.toInt() + DND_REQUEST_CODE_OFFSET
 
     companion object {
         private const val DND_REQUEST_CODE_OFFSET = 100_000
         private const val SNOOZE_REQUEST_CODE_OFFSET = 200_000
+        private const val NAP_REQUEST_CODE = 300_000
+        const val EXTRA_IS_NAP_ALARM = "is_nap_alarm"
 
         fun canScheduleExactAlarms(context: Context): Boolean {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true

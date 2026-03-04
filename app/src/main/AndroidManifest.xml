@@ -48,6 +48,10 @@
             android:name=".alarm.DndRestoreReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".alarm.NapActionReceiver"
+            android:exported="false" />
+
         <service
             android:name=".alarm.AlarmService"
             android:exported="false"

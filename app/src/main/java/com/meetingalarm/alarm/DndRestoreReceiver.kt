@@ -11,6 +11,10 @@ class DndRestoreReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         DndManager(context).restoreDnd()
+        val eventId = intent.getLongExtra(EXTRA_EVENT_ID, 0)
+        if (eventId != 0L) {
+            OngoingNotificationManager.cancelMeetingNotification(context, eventId)
+        }
     }
 
     companion object {

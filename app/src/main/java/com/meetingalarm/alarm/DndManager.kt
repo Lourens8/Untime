@@ -37,6 +37,14 @@ class DndManager(private val context: Context) {
         )
     }
 
+    /**
+     * Enable DND with a known end time. Same as enableDnd() — the end time is
+     * tracked separately for notifications/UI, not by the DND system itself.
+     */
+    fun enableDndUntil(endTimeMillis: Long) {
+        enableDnd()
+    }
+
     fun restoreDnd() {
         if (!hasAccess()) return
 
@@ -53,6 +61,14 @@ class DndManager(private val context: Context) {
             notificationManager.setInterruptionFilter(priorFilter)
             prefs.edit().remove(KEY_PRIOR_FILTER).remove(KEY_ACTIVE_COUNT).apply()
         }
+    }
+
+    /**
+     * Update the DND countdown end time. No-op since we can't show a system
+     * DND timer from a third-party app.
+     */
+    fun updateDndEndTime(newEndTimeMillis: Long) {
+        // No-op — DND timer on lock screen requires hidden system API
     }
 
     companion object {

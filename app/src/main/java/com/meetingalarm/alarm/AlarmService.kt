@@ -22,21 +22,25 @@ class AlarmService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val title = intent?.getStringExtra(EXTRA_MEETING_TITLE) ?: "Meeting"
         val eventId = intent?.getLongExtra(EXTRA_EVENT_ID, 0) ?: 0
+        val endTime = intent?.getLongExtra(EXTRA_END_TIME, 0) ?: 0
         val location = intent?.getStringExtra(EXTRA_LOCATION)
         val autoDismissSeconds = intent?.getIntExtra(EXTRA_AUTO_DISMISS_SECONDS, 60) ?: 60
         val snoozeDurationSeconds = intent?.getIntExtra(EXTRA_SNOOZE_DURATION_SECONDS, 60) ?: 60
         val snoozeEnabled = intent?.getBooleanExtra(EXTRA_SNOOZE_ENABLED, true) ?: true
         val alarmSoundUri = intent?.getStringExtra(EXTRA_ALARM_SOUND_URI)
+        val isNapAlarm = intent?.getBooleanExtra(EXTRA_IS_NAP_ALARM, false) ?: false
 
         // Build full-screen intent for the foreground notification
         val activityIntent = Intent(this, AlarmActivity::class.java).apply {
             putExtra(AlarmActivity.EXTRA_MEETING_TITLE, title)
             putExtra(AlarmActivity.EXTRA_EVENT_ID, eventId)
+            putExtra(AlarmActivity.EXTRA_END_TIME, endTime)
             putExtra(AlarmActivity.EXTRA_LOCATION, location)
             putExtra(AlarmActivity.EXTRA_AUTO_DISMISS_SECONDS, autoDismissSeconds)
             putExtra(AlarmActivity.EXTRA_SNOOZE_DURATION_SECONDS, snoozeDurationSeconds)
             putExtra(AlarmActivity.EXTRA_SNOOZE_ENABLED, snoozeEnabled)
             putExtra(AlarmActivity.EXTRA_ALARM_SOUND_URI, alarmSoundUri)
+            putExtra(AlarmActivity.EXTRA_IS_NAP_ALARM, isNapAlarm)
             this.flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_CLEAR_TOP or
                     Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -49,9 +53,10 @@ class AlarmService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val notificationTitle = if (isNapAlarm) "Nap Over!" else "Meeting Starting"
         val notification = NotificationCompat.Builder(this, MeetingAlarmApp.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_alarm)
-            .setContentTitle("Meeting Starting")
+            .setContentTitle(notificationTitle)
             .setContentText(title)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -104,11 +109,13 @@ class AlarmService : Service() {
     companion object {
         const val EXTRA_MEETING_TITLE = "meeting_title"
         const val EXTRA_EVENT_ID = "event_id"
+        const val EXTRA_END_TIME = "end_time"
         const val EXTRA_LOCATION = "location"
         const val EXTRA_AUTO_DISMISS_SECONDS = "auto_dismiss_seconds"
         const val EXTRA_SNOOZE_DURATION_SECONDS = "snooze_duration_seconds"
         const val EXTRA_SNOOZE_ENABLED = "snooze_enabled"
         const val EXTRA_ALARM_SOUND_URI = "alarm_sound_uri"
+        const val EXTRA_IS_NAP_ALARM = "is_nap_alarm"
         private const val NOTIFICATION_ID = 9999
 
         fun stop(context: Context) {

@@ -28,15 +28,18 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import android.app.NotificationManager
 import com.meetingalarm.alarm.AlarmScheduler
+import com.meetingalarm.alarm.OngoingNotificationManager
 import com.meetingalarm.calendar.CalendarReader
 import com.meetingalarm.calendar.CalendarStore
 import com.meetingalarm.exclusion.ExclusionStore
 import com.meetingalarm.model.Meeting
 import com.meetingalarm.settings.MeetingOverrideStore
 import com.meetingalarm.settings.SettingsStore
+import com.meetingalarm.alarm.DndManager
 import com.meetingalarm.ui.CalendarFilterScreen
 import com.meetingalarm.ui.MeetingListScreen
 import com.meetingalarm.ui.MeetingSettingsScreen
+import com.meetingalarm.ui.NapAlarmScreen
 import com.meetingalarm.ui.SettingsScreen
 import com.meetingalarm.ui.theme.MeetingAlarmTheme
 
@@ -52,7 +55,9 @@ class MainActivity : ComponentActivity() {
     private val hasCalendarPermission = mutableStateOf(false)
     private val showSettings = mutableStateOf(false)
     private val showCalendarFilter = mutableStateOf(false)
+    private val showNapAlarm = mutableStateOf(false)
     private val selectedMeetingForSettings = mutableStateOf<Meeting?>(null)
+    private val napEndTimeState = mutableStateOf(0L)
 
     /** Tracks whether the ringtone picker result is for global settings or a per-meeting override. */
     private var ringtonePickerTarget: String? = null // null = global, else = meeting title key
@@ -131,6 +136,16 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
+                    showNapAlarm.value -> {
+                        NapAlarmScreen(
+                            meetings = meetings,
+                            initialDurationMinutes = settingsStore.getNapDurationMinutes(),
+                            onStartNap = { durationMinutes, silenceMeetings ->
+                                startNap(durationMinutes, silenceMeetings)
+                            },
+                            onBack = { showNapAlarm.value = false }
+                        )
+                    }
                     showSettings.value -> {
                         SettingsScreen(
                             currentMinutesBefore = settingsStore.getMinutesBefore(),
@@ -171,12 +186,16 @@ class MainActivity : ComponentActivity() {
                             meetings = meetings,
                             onToggleExclusion = { meeting -> toggleExclusion(meeting) },
                             onSettingsClick = { showSettings.value = true },
+                            onNapClick = { showNapAlarm.value = true },
                             onMeetingClick = { meeting ->
                                 selectedMeetingForSettings.value = meeting
                             },
                             hasOverride = { meeting ->
                                 overrideStore.hasAnyOverride(meeting.title)
-                            }
+                            },
+                            napEndTimeMillis = napEndTimeState.value,
+                            onEndNap = { endNap() },
+                            onExtendNap = { minutes -> extendNap(minutes) }
                         )
                     }
                     else -> {
@@ -204,7 +223,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        refreshNapState()
         checkPermissions()
+    }
+
+    private fun refreshNapState() {
+        val napEnd = settingsStore.getNapEndTimeMillis()
+        napEndTimeState.value = if (settingsStore.isNapActive() && napEnd > System.currentTimeMillis()) napEnd else 0L
     }
 
     private fun checkPermissions() {
@@ -264,6 +289,62 @@ class MainActivity : ComponentActivity() {
         meetings.clear()
         meetings.addAll(loaded)
         alarmScheduler.scheduleAll(loaded, settingsStore, overrideStore)
+    }
+
+    private fun startNap(durationMinutes: Int, silenceMeetings: Boolean) {
+        val now = System.currentTimeMillis()
+        val napEnd = now + durationMinutes * 60_000L
+
+        settingsStore.setNapDurationMinutes(durationMinutes)
+        settingsStore.setNapActive(true)
+        settingsStore.setNapEndTimeMillis(napEnd)
+
+        if (silenceMeetings) {
+            for (meeting in meetings) {
+                if (!meeting.isExcluded &&
+                    meeting.startTimeMillis < napEnd &&
+                    meeting.endTimeMillis > now
+                ) {
+                    alarmScheduler.cancel(meeting)
+                }
+            }
+        }
+
+        DndManager(this).enableDndUntil(napEnd)
+        alarmScheduler.scheduleNapAlarm(durationMinutes, settingsStore.getAlarmSoundUri())
+        OngoingNotificationManager.showNapNotification(this, napEnd)
+        napEndTimeState.value = napEnd
+        showNapAlarm.value = false
+    }
+
+    private fun endNap() {
+        alarmScheduler.cancelNapAlarm()
+        DndManager(this).restoreDnd()
+        OngoingNotificationManager.cancelNapNotification(this)
+        settingsStore.setNapActive(false)
+        settingsStore.setNapEndTimeMillis(0)
+        napEndTimeState.value = 0L
+        loadAndSync()
+    }
+
+    private fun extendNap(minutes: Int) {
+        val currentEnd = settingsStore.getNapEndTimeMillis()
+        val newEnd = if (currentEnd > System.currentTimeMillis()) {
+            currentEnd + minutes * 60_000L
+        } else {
+            System.currentTimeMillis() + minutes * 60_000L
+        }
+        settingsStore.setNapEndTimeMillis(newEnd)
+
+        // Cancel old nap alarm and schedule new one
+        alarmScheduler.cancelNapAlarm()
+        val remainingMinutes = ((newEnd - System.currentTimeMillis()) / 60_000L).toInt().coerceAtLeast(1)
+        alarmScheduler.scheduleNapAlarm(remainingMinutes, settingsStore.getAlarmSoundUri())
+
+        // Update the DND countdown, notification, and in-app banner
+        DndManager(this).updateDndEndTime(newEnd)
+        OngoingNotificationManager.showNapNotification(this, newEnd)
+        napEndTimeState.value = newEnd
     }
 
     private fun toggleExclusion(meeting: Meeting) {

@@ -189,6 +189,11 @@ class MainActivity : ComponentActivity() {
                                 showSettings.value = false
                                 showCalendarFilter.value = true
                             },
+                            currentNextMeetingNotification = settingsStore.getNextMeetingNotification(),
+                            onNextMeetingNotificationChanged = { enabled ->
+                                settingsStore.setNextMeetingNotification(enabled)
+                                loadAndSync()
+                            },
                             onBack = { showSettings.value = false }
                         )
                     }

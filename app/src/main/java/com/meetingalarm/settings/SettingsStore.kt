@@ -62,6 +62,13 @@ class SettingsStore(context: Context) {
         prefs.edit().putLong(KEY_NAP_END_TIME, millis).apply()
     }
 
+    fun getNextMeetingNotification(): Boolean =
+        prefs.getBoolean(KEY_NEXT_MEETING_NOTIFICATION, false)
+
+    fun setNextMeetingNotification(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_NEXT_MEETING_NOTIFICATION, enabled).apply()
+    }
+
     companion object {
         private const val KEY_MINUTES_BEFORE = "minutes_before"
         private const val DEFAULT_MINUTES_BEFORE = 0
@@ -84,5 +91,6 @@ class SettingsStore(context: Context) {
 
         private const val KEY_NAP_ACTIVE = "nap_active"
         private const val KEY_NAP_END_TIME = "nap_end_time"
+        private const val KEY_NEXT_MEETING_NOTIFICATION = "next_meeting_notification"
     }
 }

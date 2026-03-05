@@ -52,12 +52,15 @@ fun SettingsScreen(
     currentAlarmSoundName: String,
     onPickAlarmSound: () -> Unit,
     onCalendarFilterClick: () -> Unit,
+    currentNextMeetingNotification: Boolean,
+    onNextMeetingNotificationChanged: (Boolean) -> Unit,
     onBack: () -> Unit
 ) {
     var selectedMinutes by remember { mutableIntStateOf(currentMinutesBefore) }
     var selectedAutoDismiss by remember { mutableIntStateOf(currentAutoDismissSeconds) }
     var snoozeEnabled by remember { mutableStateOf(currentSnoozeEnabled) }
     var selectedSnoozeDuration by remember { mutableIntStateOf(currentSnoozeDuration) }
+    var nextMeetingNotification by remember { mutableStateOf(currentNextMeetingNotification) }
 
     Scaffold(
         topBar = {
@@ -197,6 +200,30 @@ fun SettingsScreen(
                     text = "Change",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            SectionDivider()
+
+            // --- Next meeting notification ---
+            SectionHeader(
+                title = "Next meeting notification",
+                subtitle = "Show a persistent notification with a countdown to your next meeting on the lock screen."
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Enable", style = MaterialTheme.typography.bodyLarge)
+                Switch(
+                    checked = nextMeetingNotification,
+                    onCheckedChange = {
+                        nextMeetingNotification = it
+                        onNextMeetingNotificationChanged(it)
+                    }
                 )
             }
 

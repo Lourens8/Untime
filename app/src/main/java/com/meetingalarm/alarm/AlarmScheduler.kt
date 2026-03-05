@@ -119,6 +119,9 @@ class AlarmScheduler(private val context: Context) {
                 cleanupDeletedMeeting(activeId)
             }
         }
+
+        // Update the persistent "next meeting" notification
+        OngoingNotificationManager.updateNextMeetingNotification(context, meetings)
     }
 
     /** Cancel DND restore alarm, restore DND state, and dismiss notification for a deleted meeting. */

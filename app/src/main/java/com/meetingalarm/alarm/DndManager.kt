@@ -54,15 +54,17 @@ class DndManager(private val context: Context) {
     fun restoreDnd(eventId: Long = 0L) {
         if (!hasAccess()) return
 
+        // Guard: if the eventId was already removed (e.g. by cleanup + DndRestoreReceiver
+        // both firing for the same meeting), skip the decrement to prevent double-restore.
+        if (eventId != 0L) {
+            val ids = prefs.getStringSet(KEY_ACTIVE_EVENT_IDS, emptySet())!!.toMutableSet()
+            if (!ids.remove(eventId.toString())) return
+            prefs.edit().putStringSet(KEY_ACTIVE_EVENT_IDS, ids).apply()
+        }
+
         val activeCount = prefs.getInt(KEY_ACTIVE_COUNT, 0)
         val newCount = (activeCount - 1).coerceAtLeast(0)
         prefs.edit().putInt(KEY_ACTIVE_COUNT, newCount).apply()
-
-        if (eventId != 0L) {
-            val ids = prefs.getStringSet(KEY_ACTIVE_EVENT_IDS, emptySet())!!.toMutableSet()
-            ids.remove(eventId.toString())
-            prefs.edit().putStringSet(KEY_ACTIVE_EVENT_IDS, ids).apply()
-        }
 
         // Only restore when the last active meeting ends
         if (newCount == 0) {
